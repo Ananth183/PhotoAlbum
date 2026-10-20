@@ -55,7 +55,28 @@ const prev = () => { if (current > 0) { current--; render(); } };
 
 document.getElementById("next").onclick = next;
 document.getElementById("prev").onclick = prev;
-leaves.forEach((l, i) => l.addEventListener("click", () => (i < current ? prev() : next())));
+let touchStart = null;
+let suppressClickUntil = 0;
+
+book.addEventListener("pointerdown", event => {
+  if (event.pointerType === "touch") touchStart = { x: event.clientX, y: event.clientY };
+});
+book.addEventListener("pointerup", event => {
+  if (!touchStart || event.pointerType !== "touch") return;
+  const dx = event.clientX - touchStart.x;
+  const dy = event.clientY - touchStart.y;
+  touchStart = null;
+  if (Math.abs(dx) < 45 || Math.abs(dx) < Math.abs(dy) * 1.2) return;
+  suppressClickUntil = Date.now() + 500;
+  if (dx < 0) next();
+  else prev();
+});
+book.addEventListener("pointercancel", () => { touchStart = null; });
+leaves.forEach((l, i) => l.addEventListener("click", () => {
+  if (Date.now() < suppressClickUntil) return;
+  if (i < current) prev();
+  else next();
+}));
 document.addEventListener("keydown", e => {
   if (e.key === "ArrowRight") next();
   if (e.key === "ArrowLeft") prev();

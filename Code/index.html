@@ -2,18 +2,28 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Photo Album</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#171a16">
+<title>Photo Album — Memories &amp; Moments</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 <main class="stage">
-  <div class="book" id="book" aria-label="Photo album book"></div>
-  <nav class="controls">
-    <button id="prev" aria-label="Previous page">&#8592; Prev</button>
-    <span id="count"></span>
-    <button id="next" aria-label="Next page">Next &#8594;</button>
+  <header class="album-heading">
+    <p class="eyebrow">A collection of little things</p>
+    <h1>Memories <span>&amp;</span> Moments</h1>
+    <p class="heading-note">Turn a page and stay awhile.</p>
+  </header>
+  <section class="album-view" aria-label="Interactive photo album">
+    <div class="book" id="book" role="group" aria-label="Photo album book"></div>
+  </section>
+  <p class="rotate-hint"><span aria-hidden="true">↻</span> Rotate your phone for full-size photos</p>
+  <nav class="controls" aria-label="Album navigation">
+    <button id="prev" type="button" aria-label="Previous spread">&#8592; <span>Previous</span></button>
+    <span id="count" role="status" aria-live="polite"></span>
+    <button id="next" type="button" aria-label="Next spread"><span>Next</span> &#8594;</button>
   </nav>
+  <p class="keyboard-hint">Use arrow keys, swipe, or tap a page to turn</p>
 </main>
 <script src="script.js"></script>
 </body>
