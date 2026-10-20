@@ -11,12 +11,13 @@ const photos = [
 const book = document.getElementById("book");
 const count = document.getElementById("count");
 
-const cover = `<div class="cover-art"><span class="ornament">&#10087;</span>
-  <h1>Photo Album</h1><p>Memories &amp; moments</p><span class="ornament">&#10087;</span></div>`;
-const intro = `<div class="page-inner intro"><h2>Welcome</h2>
-  <p>Turn the pages to relive the moments.</p></div>`;
-const ending = `<div class="page-inner intro"><h2>The End</h2>
-  <p>Thank you for looking.</p></div>`;
+const cover = `<div class="cover-art"><span class="ornament">&#10084;</span>
+  <p class="cover-kicker">The journey of</p><h1>Chandana</h1>
+  <p class="cover-sub">A mother in the making</p><span class="ornament">&#10087;</span></div>`;
+const intro = `<div class="page-inner intro"><span class="ornament">&#10048;</span><h2>Our Little Miracle</h2>
+  <p>Every week, every kick, every dream &mdash; a journey of love, captured page by page.</p></div>`;
+const ending = `<div class="page-inner intro"><span class="ornament">&#10084;</span><h2>To Be Continued</h2>
+  <p>With love, Chandana &mdash; the best chapter is yet to come.</p></div>`;
 
 const photoPage = (p, n) => `<figure class="page-inner">
   <div class="photo"><img src="../Images/${encodeURIComponent(p.file)}" alt="${p.caption}" loading="lazy"></div>
@@ -77,7 +78,26 @@ leaves.forEach((l, i) => l.addEventListener("click", () => {
   if (i < current) prev();
   else next();
 }));
+const fsButton = document.getElementById("fullscreen");
+const root = document.documentElement;
+const fsSupported = root.requestFullscreen || root.webkitRequestFullscreen;
+if (!fsSupported) fsButton.hidden = true;
+fsButton.addEventListener("click", () => {
+  const active = document.fullscreenElement || document.webkitFullscreenElement;
+  if (active) (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+  else (root.requestFullscreen || root.webkitRequestFullscreen).call(root);
+});
+const syncFullscreen = () => {
+  const active = !!(document.fullscreenElement || document.webkitFullscreenElement);
+  document.body.classList.toggle("is-fullscreen", active);
+  fsButton.setAttribute("aria-pressed", active);
+  fsButton.querySelector("span").textContent = active ? "Exit full screen" : "Full screen";
+};
+document.addEventListener("fullscreenchange", syncFullscreen);
+document.addEventListener("webkitfullscreenchange", syncFullscreen);
+
 document.addEventListener("keydown", e => {
+  if (e.key === "f" || e.key === "F") fsButton.click();
   if (e.key === "ArrowRight") next();
   if (e.key === "ArrowLeft") prev();
 });
