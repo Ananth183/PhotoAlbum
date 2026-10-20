@@ -1,12 +1,19 @@
 :root {
   color-scheme: dark;
-  --page-width: min(48vw, 820px, calc((100svh - 225px) * .7463));
-  --page-height: calc(var(--page-width) * 1.34);
   --paper: #fff7f0;
   --ink: #4a2f3a;
   --leather: #8a4a5c;
   --gold: #f0cfa0;
   --muted-gold: #d9b6a6;
+}
+
+/* Sizes are declared on body so full-screen mode can override --top/--bottom */
+body {
+  --edge: 0px;
+  --top: 0px;
+  --bottom: 0px;
+  /* phone portrait: width-limited spread; stacked UI below the book */
+  --page-width: min(49vw, 420px, calc((100svh - 300px) * .7463));
 }
 
 * {
@@ -93,7 +100,7 @@ body {
 .book {
   position: relative;
   width: var(--page-width);
-  height: var(--page-height);
+  height: calc(var(--page-width) * 1.34);
   perspective: 2500px;
   transition: transform .8s ease;
   filter: drop-shadow(0 24px 22px rgba(0, 0, 0, .52));
@@ -335,13 +342,6 @@ figcaption {
 }
 .fs-button[hidden] { display: none; }
 
-/* Full screen: drop the heading and hints so the book can use the space */
-.is-fullscreen .album-heading,
-.is-fullscreen .keyboard-hint { display: none; }
-.is-fullscreen {
-  --page-width: min(48vw, 960px, calc((100svh - 130px) * .7463));
-}
-
 .controls {
   width: min(100%, 390px);
   display: flex;
@@ -398,14 +398,12 @@ figcaption {
 }
 
 @media (max-width: 700px) {
-  :root {
-    --page-width: min(48vw, 400px, calc((100svh - 215px) * .7463));
-    --page-height: calc(var(--page-width) * 1.34);
-  }
+  body { --page-width: min(49vw, 420px, calc((100svh - 300px) * .7463)); }
 
-  .stage { gap: .85rem; }
+  .stage { gap: .7rem; padding-right: .4rem; padding-left: .4rem; }
+  .eyebrow { display: none; }
   .album-heading h1 { font-size: clamp(1.35rem, 6vw, 2rem); }
-  .heading-note { font-size: .86rem; }
+  .heading-note { font-size: .86rem; margin-top: .2rem; }
   .cover-art { gap: .7rem; }
   .cover-art h1 { font-size: clamp(1rem, 5vw, 1.6rem); }
   .ornament { font-size: 1.35rem; }
@@ -420,69 +418,130 @@ figcaption {
 }
 
 @media (max-width: 380px) {
-  :root { --page-width: min(48vw, calc((100svh - 215px) * .7463)); }
-
-  .stage { gap: .7rem; padding-right: .75rem; padding-left: .75rem; }
-  .eyebrow { font-size: .59rem; }
   .controls button { min-width: 5.8rem; font-size: .9rem; }
 }
 
-@media (max-height: 520px) and (orientation: landscape) {
-  :root {
-    --page-width: min(40vw, calc((100svh - 70px) * .7463));
-    --page-height: calc(var(--page-width) * 1.34);
+/* Desktop, tablet and landscape phones: the book fills the screen and the
+   controls float over the edges instead of taking vertical space. */
+@media (min-width: 701px), (orientation: landscape) and (max-height: 520px) {
+  body {
+    --edge: clamp(52px, 5vw, 84px);
+    --top: 80px;
+    --bottom: 52px;
+    --page-width: min(
+      calc((100vw - 2 * var(--edge)) / 2),
+      calc((100svh - var(--top) - var(--bottom)) * .7463),
+      1300px
+    );
+    overflow: hidden;
   }
+
+  body.is-fullscreen { --top: 64px; --bottom: 44px; }
 
   .stage {
-    min-height: 100svh;
-    display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    align-content: center;
-    justify-content: stretch;
-    row-gap: .5rem;
-    padding: .55rem 1rem;
+    display: block;
+    position: relative;
+    height: 100svh;
+    min-height: 0;
+    padding: 0;
   }
 
-  .album-heading { margin: 0; }
-
-  .eyebrow { margin-bottom: .15rem; }
-  .album-heading h1 { font-size: clamp(1.15rem, 4vh, 1.65rem); }
-  .heading-note { display: none; }
-  .controls {
+  .album-heading {
     position: absolute;
-    top: 50%;
-    right: max(1rem, env(safe-area-inset-right));
-    transform: translateY(-50%);
-    width: auto;
-    flex-direction: column;
-    gap: .55rem;
+    top: .9rem;
+    right: 0;
+    left: 0;
+    margin: 0;
+    pointer-events: none;
   }
-  .controls button { min-width: 6.4rem; min-height: 2.65rem; }
-  .rotate-hint { display: none; }
-  .keyboard-hint { display: none; }
-  .extras {
-    position: fixed;
-    top: .6rem;
-    right: max(.8rem, env(safe-area-inset-right));
-  }
-  .is-fullscreen {
-    --page-width: min(38vw, calc((100svh - 30px) * .7463));
-  }
-  .is-fullscreen .extras { opacity: .6; }
-}
+  .eyebrow { display: block; margin-bottom: .15rem; }
+  .album-heading h1 { font-size: clamp(1.4rem, 2.6vw, 2.1rem); }
+  .heading-note { display: none; }
 
-@media (min-width: 701px) {
+  .album-view {
+    position: absolute;
+    inset: var(--top) 0 var(--bottom);
+    width: auto;
+    align-items: center;
+  }
+
+  .controls { display: contents; }
+  .controls button span { display: none; }
+
+  #prev, #next {
+    position: fixed;
+    top: 50%;
+    z-index: 5;
+    width: 2.9rem;
+    height: 2.9rem;
+    min-width: 0;
+    min-height: 0;
+    padding: 0;
+    border-radius: 50%;
+    font-size: 1.5rem;
+    line-height: 1;
+    transform: translateY(-50%);
+  }
+  #prev { left: calc((var(--edge) - 2.9rem) / 2); }
+  #next { right: calc((var(--edge) - 2.9rem) / 2); }
+  .controls #prev:hover:not(:disabled),
+  .controls #next:hover:not(:disabled) { transform: translateY(calc(-50% - 1px)); }
+
+  #count {
+    position: fixed;
+    bottom: .9rem;
+    left: 50%;
+    min-width: 0;
+    padding: .3rem .9rem;
+    border-radius: 999px;
+    background: rgba(0, 0, 0, .25);
+    transform: translateX(-50%);
+  }
+
   .extras {
     position: fixed;
     top: 1rem;
     right: max(1.2rem, env(safe-area-inset-right));
+    z-index: 5;
   }
-  .keyboard-hint { display: none; }
+
+  .rotate-hint, .keyboard-hint { display: none; }
+  body.is-fullscreen .album-heading { display: none; }
 }
 
-@media (min-width: 701px) and (min-height: 521px) and (max-height: 760px) {
-  :root { --page-width: min(48vw, calc((100svh - 195px) * .7463)); }
-  .heading-note { display: none; }
+/* Landscape phones: no heading; icon-only buttons stacked in the right gutter */
+@media (orientation: landscape) and (max-height: 520px) {
+  body {
+    --edge: 56px;
+    --top: 14px;
+    --bottom: 14px;
+  }
+  body.is-fullscreen { --top: 14px; --bottom: 14px; }
+
+  .album-heading { display: none; }
+
+  .extras {
+    top: .6rem;
+    right: calc((var(--edge) - 2.5rem) / 2);
+    flex-direction: column;
+    gap: .4rem;
+  }
+  .extras .fs-button {
+    width: 2.5rem;
+    height: 2.5rem;
+    min-height: 0;
+    padding: 0;
+    border-radius: 50%;
+    font-size: 1rem;
+  }
+  .extras .fs-button span { display: none; }
+
+  #count {
+    right: .4rem;
+    bottom: .6rem;
+    left: auto;
+    transform: none;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
