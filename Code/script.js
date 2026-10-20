@@ -25,8 +25,20 @@ async function loadImageFiles() {
   return [];
 }
 
+// Optional Images/captions.json: { "photo.jpg": "My caption" }. Blank or missing entries fall back to the filename.
+async function loadCaptions() {
+  try {
+    const res = await fetch(IMAGES_DIR + "captions.json", { cache: "no-cache" });
+    if (res.ok) return await res.json();
+  } catch (e) { /* captions are optional */ }
+  return {};
+}
+let captions = {};
+
 // "Week 12 - First scan.jpg" -> "Week 12 - First scan"; camera/screenshot names get a generic caption
 function captionFor(file, index) {
+  const custom = typeof captions[file] === "string" ? captions[file].trim() : "";
+  if (custom) return custom;
   const name = file.replace(IMAGE_EXT, "").replace(/[_]+/g, " ").trim();
   return !name || GENERATED_NAME.test(name) ? `Moment ${index + 1}` : name;
 }
@@ -161,6 +173,8 @@ document.addEventListener("keydown", e => {
 (async function init() {
   book.classList.add("closed-front");
   count.textContent = "Loading…";
-  buildBook(await loadImageFiles());
+  let files;
+  [captions, files] = await Promise.all([loadCaptions(), loadImageFiles()]);
+  buildBook(files);
   render();
 })();
