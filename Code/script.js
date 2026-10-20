@@ -49,7 +49,33 @@ function render() {
   count.textContent = `${current} / ${leaves.length}`;
   document.getElementById("prev").disabled = current === 0;
   document.getElementById("next").disabled = current === leaves.length;
+  scheduleAutoFlip();
 }
+
+// Auto-flip: advance every 3s; the timer restarts after any page change,
+// so manual turns get a full 3s before the next automatic flip. Loops at the end.
+const AUTO_FLIP_MS = 3000;
+const autoButton = document.getElementById("autoplay");
+let autoPlaying = true;
+let autoTimer = null;
+
+function scheduleAutoFlip() {
+  clearTimeout(autoTimer);
+  if (!autoPlaying || document.hidden) return;
+  autoTimer = setTimeout(() => {
+    if (current === leaves.length) { current = 0; render(); }
+    else next();
+  }, AUTO_FLIP_MS);
+}
+
+function setAutoPlay(on) {
+  autoPlaying = on;
+  autoButton.setAttribute("aria-pressed", on);
+  autoButton.innerHTML = on ? "&#10074;&#10074; <span>Pause</span>" : "&#9654; <span>Play</span>";
+  scheduleAutoFlip();
+}
+autoButton.addEventListener("click", () => setAutoPlay(!autoPlaying));
+document.addEventListener("visibilitychange", scheduleAutoFlip);
 
 const next = () => { if (current < leaves.length) { current++; render(); } };
 const prev = () => { if (current > 0) { current--; render(); } };
