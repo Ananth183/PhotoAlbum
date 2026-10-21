@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Rebuild Images/images.json and captions.json
+      - name: Rebuild Images/captions.json and album-data.js
         shell: pwsh
         run: ./update-images.ps1
       - name: Commit if changed
@@ -22,7 +22,7 @@ jobs:
           if [ -n "$(git status --porcelain Images)" ]; then
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add Images/images.json Images/captions.json
+            git add -A Images
             git commit -m "Update image list"
             git push
           fi

@@ -6,7 +6,7 @@ https://ananth183.github.io/PhotoAlbum/Code/index.html
 Photos are read from the `Images/` folder — nothing is hard-coded in `script.js`.
 
 - **Add / remove / rename** pictures in `Images/`.
-- The page reads `Images/images.json`. It is rebuilt automatically by the
+- The photo list lives in `Images/album-data.js`. It is rebuilt automatically by the
   *Update image list* GitHub Action whenever you push changes under `Images/`.
   To rebuild it locally instead, run `.\update-images.ps1`.
 - Pages follow filename order (numbers sort naturally, so `Week 2` comes before `Week 10`).
@@ -18,5 +18,8 @@ Photos are read from the `Images/` folder — nothing is hard-coded in `script.j
   (`IMG_…`, `Screenshot …`) fall back to "Moment N". Long captions wrap to two lines.
 - Supported: png, jpg/jpeg, gif, webp, avif, bmp.
 - Running locally with a server that lists folders (e.g. `python -m http.server`) also works
-  without `images.json`.
+  without `album-data.js`.
+- **Opening `Code/index.html` directly from disk** (double-click, `file://`) works too. Browsers
+  block reading JSON files there, so captions come from `album-data.js` — re-run
+  `.\update-images.ps1` after editing `captions.json` by hand so local viewing picks up the change.
 

@@ -1,17 +1,15 @@
 // Photos come from the ../Images folder. Drop images in there (see README):
-// the page reads Images/images.json, or falls back to the folder listing.
+// the photo list comes from Images/album-data.js, or falls back to the folder listing.
 const IMAGES_DIR = "../Images/";
 const IMAGE_EXT = /\.(png|jpe?g|gif|webp|avif|bmp)$/i;
 const GENERATED_NAME = /^(screenshot|img|dsc|pxl|image|photo|whatsapp|\d)/i;
+// Browsers block fetch() for pages opened from disk, so album-data.js is loaded as a script.
+const IS_LOCAL_FILE = location.protocol === "file:";
+const bundled = window.ALBUM_DATA || {};
 
 async function loadImageFiles() {
-  try {
-    const res = await fetch(IMAGES_DIR + "images.json", { cache: "no-cache" });
-    if (res.ok) {
-      const list = await res.json();
-      if (Array.isArray(list) && list.length) return list;
-    }
-  } catch (e) { /* fall through to folder listing */ }
+  if (Array.isArray(bundled.images) && bundled.images.length) return bundled.images;
+  if (IS_LOCAL_FILE) return [];
   try {
     const res = await fetch(IMAGES_DIR, { cache: "no-cache" });
     if (res.ok) {
@@ -27,11 +25,12 @@ async function loadImageFiles() {
 
 // Optional Images/captions.json: { "photo.jpg": "My caption" }. Blank or missing entries fall back to the filename.
 async function loadCaptions() {
+  if (IS_LOCAL_FILE) return bundled.captions || {};
   try {
     const res = await fetch(IMAGES_DIR + "captions.json", { cache: "no-cache" });
     if (res.ok) return await res.json();
   } catch (e) { /* captions are optional */ }
-  return {};
+  return bundled.captions || {};
 }
 let captions = {};
 
@@ -105,7 +104,7 @@ function scheduleAutoFlip() {
   clearTimeout(autoTimer);
   if (!autoPlaying || document.hidden) return;
   autoTimer = setTimeout(() => {
-    if (current === leaves.length) { current = 0; render(); }
+    if (current === leaves.length) { current = 0; render(); preloadAround(current); }
     else next();
   }, AUTO_FLIP_MS);
 }
@@ -119,47 +118,82 @@ function setAutoPlay(on) {
 autoButton.addEventListener("click", () => setAutoPlay(!autoPlaying));
 document.addEventListener("visibilitychange", scheduleAutoFlip);
 
+// Photos start loading before their page is turned to, and a turn waits until the
+// photos on the destination spread are decoded, so pages never flip to a blank photo.
+const PHOTO_TIMEOUT_MS = 20000;
+const PRELOAD_SPREADS_AHEAD = 2;
+const imageLoads = new WeakMap();
+
+function showPhotoError(img) {
+  const photo = img.closest(".photo");
+  if (photo.classList.contains("image-error")) return;
+  photo.classList.add("image-error");
+  const message = document.createElement("span");
+  message.className = "photo-error";
+  message.textContent = "Photo could not be loaded";
+  photo.appendChild(message);
+}
+
+function loadImage(img) {
+  if (!imageLoads.has(img)) {
+    const source = img.dataset.src;
+    img.removeAttribute("data-src");
+    img.src = source;
+    let timer;
+    const timeout = new Promise((_, reject) => {
+      timer = setTimeout(() => reject(new Error(`Timed out after ${PHOTO_TIMEOUT_MS / 1000}s`)), PHOTO_TIMEOUT_MS);
+    });
+    const load = Promise.race([img.decode(), timeout])
+      .catch(error => {
+        console.error(`Unable to load album photo: ${source}`, error);
+        img.removeAttribute("src");
+        showPhotoError(img);
+      })
+      .finally(() => {
+        clearTimeout(timer);
+        load.done = true;
+      });
+    imageLoads.set(img, load);
+  }
+  return imageLoads.get(img);
+}
+
+// Photos visible when `spread` leaves are flipped: back of the last flipped leaf, front of the next one.
+function spreadImages(spread) {
+  return [[spread - 1, ".back"], [spread, ".front"]].flatMap(([leafIndex, face]) =>
+    leafIndex >= 0 && leafIndex < leaves.length
+      ? [...leaves[leafIndex].querySelectorAll(`${face} .photo img`)]
+      : []
+  );
+}
+
+const loadSpread = spread => Promise.all(spreadImages(spread).map(loadImage));
+
+function preloadAround(spread) {
+  for (let s = spread + 1; s <= spread + PRELOAD_SPREADS_AHEAD; s++) loadSpread(s);
+  loadSpread(spread - 1);
+}
+
 async function turn(direction) {
   if (isTurning) return;
-  const target = direction > 0 ? current : current - 1;
-  if (target < 0 || target >= leaves.length) return;
+  const destination = current + direction;
+  if (destination < 0 || destination > leaves.length) return;
 
   isTurning = true;
   book.setAttribute("aria-busy", "true");
-  count.textContent = "Loading photo…";
   document.getElementById("prev").disabled = true;
   document.getElementById("next").disabled = true;
 
   try {
-    const visibleFaces = direction > 0
-      ? [[target, ".back"], [target + 1, ".front"]]
-      : [[target, ".front"], [target - 1, ".back"]];
-    const images = visibleFaces.flatMap(([leafIndex, face]) =>
-      leafIndex >= 0 && leafIndex < leaves.length
-        ? [...leaves[leafIndex].querySelectorAll(`${face} img[data-src]`)]
-        : []
-    );
-    await Promise.all(images.map(async img => {
-      const source = img.dataset.src;
-      img.src = source;
-      try {
-        await img.decode();
-      } catch (error) {
-        console.error(`Unable to load album photo: ${source}`, error);
-        const photo = img.closest(".photo");
-        photo.classList.add("image-error");
-        const message = document.createElement("span");
-        message.className = "photo-error";
-        message.textContent = "Photo could not be loaded";
-        photo.appendChild(message);
-      }
-      img.removeAttribute("data-src");
-    }));
-    current += direction;
+    const pending = spreadImages(destination).map(loadImage);
+    if (pending.some(load => !load.done)) count.textContent = "Loading photo…";
+    await Promise.all(pending);
+    current = destination;
   } finally {
     isTurning = false;
     book.removeAttribute("aria-busy");
     render();
+    preloadAround(current);
   }
 }
 
@@ -222,4 +256,5 @@ document.addEventListener("keydown", e => {
   [captions, files] = await Promise.all([loadCaptions(), loadImageFiles()]);
   buildBook(files);
   render();
+  preloadAround(current);
 })();
