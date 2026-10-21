@@ -59,12 +59,13 @@ const ending = `<div class="page-inner intro"><span class="ornament">&#10084;</s
 const photoPage = (file, n) => {
   const caption = escapeHtml(captionFor(file, n - 1));
   return `<figure class="page-inner">
-  <div class="photo"><img src="${IMAGES_DIR}${encodeURIComponent(file)}" alt="${caption}"></div>
+  <div class="photo"><img data-src="${IMAGES_DIR}${encodeURIComponent(file)}" alt="${caption}"></div>
   <figcaption>${caption}</figcaption><span class="num">${n}</span></figure>`;
 };
 
 const leaves = [];
 let current = 0; // number of flipped leaves
+let isTurning = false;
 
 function buildBook(files) {
   // Sequence of faces: cover, intro, photos..., ending (padded to even)
@@ -88,8 +89,8 @@ function render() {
   book.classList.toggle("closed-front", current === 0);
   book.classList.toggle("closed-back", current === leaves.length);
   count.textContent = `${current} / ${leaves.length}`;
-  document.getElementById("prev").disabled = current === 0;
-  document.getElementById("next").disabled = current === leaves.length;
+  document.getElementById("prev").disabled = isTurning || current === 0;
+  document.getElementById("next").disabled = isTurning || current === leaves.length;
   scheduleAutoFlip();
 }
 
@@ -118,8 +119,52 @@ function setAutoPlay(on) {
 autoButton.addEventListener("click", () => setAutoPlay(!autoPlaying));
 document.addEventListener("visibilitychange", scheduleAutoFlip);
 
-const next = () => { if (current < leaves.length) { current++; render(); } };
-const prev = () => { if (current > 0) { current--; render(); } };
+async function turn(direction) {
+  if (isTurning) return;
+  const target = direction > 0 ? current : current - 1;
+  if (target < 0 || target >= leaves.length) return;
+
+  isTurning = true;
+  book.setAttribute("aria-busy", "true");
+  count.textContent = "Loading photo…";
+  document.getElementById("prev").disabled = true;
+  document.getElementById("next").disabled = true;
+
+  try {
+    const visibleFaces = direction > 0
+      ? [[target, ".back"], [target + 1, ".front"]]
+      : [[target, ".front"], [target - 1, ".back"]];
+    const images = visibleFaces.flatMap(([leafIndex, face]) =>
+      leafIndex >= 0 && leafIndex < leaves.length
+        ? [...leaves[leafIndex].querySelectorAll(`${face} img[data-src]`)]
+        : []
+    );
+    await Promise.all(images.map(async img => {
+      const source = img.dataset.src;
+      img.src = source;
+      try {
+        await img.decode();
+      } catch (error) {
+        console.error(`Unable to load album photo: ${source}`, error);
+        const photo = img.closest(".photo");
+        photo.classList.add("image-error");
+        const message = document.createElement("span");
+        message.className = "photo-error";
+        message.textContent = "Photo could not be loaded";
+        photo.appendChild(message);
+      }
+      img.removeAttribute("data-src");
+    }));
+    current += direction;
+  } finally {
+    isTurning = false;
+    book.removeAttribute("aria-busy");
+    render();
+  }
+}
+
+const next = () => turn(1);
+const prev = () => turn(-1);
 
 document.getElementById("next").onclick = next;
 document.getElementById("prev").onclick = prev;

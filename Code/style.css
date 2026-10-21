@@ -268,6 +268,21 @@ figure.page-inner {
   object-fit: cover;
 }
 
+.photo.image-error {
+  display: grid;
+  place-items: center;
+}
+
+.photo.image-error img {
+  display: none;
+}
+
+.photo-error {
+  color: #8a4a5c;
+  font: italic .9rem "Segoe UI", Arial, sans-serif;
+  text-align: center;
+}
+
 figcaption {
   max-width: 100%;
   display: -webkit-box;
